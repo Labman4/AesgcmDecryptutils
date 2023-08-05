@@ -26,8 +26,11 @@ func main() {
 		panic(err)
 	}
 	chunkSize, err := parseSize(config.chunkSize)
+	if err != nil {
+		panic(err)
+	}
 	sha256Hash := sha256ByteArray(config.secret)
-	decrypt := decryptChunk(bytes, sha256Hash, (chunkSize + 12 + 16))
+	decrypt := decryptChunk(bytes, sha256Hash, chunkSize + 28)
 	err = os.WriteFile(config.exportPath, decrypt, 0644)
 	if err != nil {
 		panic(err)
@@ -61,8 +64,9 @@ func sha256ByteArray(input string) []byte {
 
 func decryptChunk(ciphertext []byte, key []byte, chunkSize int) []byte {
 	numOfChunks := (len(ciphertext) + chunkSize - 1) / chunkSize
-	originLength := len(ciphertext) - (numOfChunks * 12)
+	originLength := len(ciphertext) - (numOfChunks * 28)
 	decrypt := make([]byte, originLength)
+	decryptoffset := 0;
 	for i := 0; i < numOfChunks; i++ {
 		start := i * chunkSize
 		length := chunkSize
@@ -72,7 +76,8 @@ func decryptChunk(ciphertext []byte, key []byte, chunkSize int) []byte {
 		chunk := make([]byte, length)
 		copy(chunk, ciphertext[start:start+length])
 		decrypted := decryptBytes(chunk, key)
-		copy(decrypt[start:start+len(decrypted)], decrypted)
+		copy(decrypt[start:decryptoffset+len(decrypted)], decrypted)
+		decryptoffset += len(decrypted)
 	}
 	return decrypt
 }
